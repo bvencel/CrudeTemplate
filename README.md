@@ -7,6 +7,7 @@ CrudeTemplate is a minimal, recursive string templating engine for .NET, designe
 - Reusable (templates and rendered results can be cached and reused)
 
 ## Example
+```C#
 var name = new Template("John");
 var body = new Template("Your order {{OrderId}} has shipped.")
     .With("OrderId", new Template("#1234"));
@@ -18,20 +19,26 @@ var email = new Template("Dear {{Name}},\n\n{{Body}}\n\n{{Footer}}")
     .With("Footer", footer);
 
 string result = email.Render();
+```
+
 Produces:
-Dear John,
 
-Your order #1234 has shipped.
+    Dear John,
 
-Kind regards,
-The Company
+    Your order #1234 has shipped.
+
+    Kind regards,
+    The Company
+
 A tree like this:
-Email
-├── Text: "Dear {{Name}},\n\n{{Body}}\n\n{{Footer}}"
-├── Name: [Template("John")]
-├── Body: [Template("Your order {{OrderId}} has shipped.")]
-│   └── OrderId: [Template("#1234")]
-└── Footer: [Template("Kind regards,\nThe Company")]
+
+    Email
+    ├── Text: "Dear {{Name}},\n\n{{Body}}\n\n{{Footer}}"
+    ├── Name: [Template("John")]
+    ├── Body: [Template("Your order {{OrderId}} has shipped.")]
+    │   └── OrderId: [Template("#1234")]
+    └── Footer: [Template("Kind regards,\nThe Company")]
+
 Will render to a complete email, with all placeholders recursively filled in.
 
 
@@ -43,7 +50,7 @@ Will render to a complete email, with all placeholders recursively filled in.
 - Scenarios where structure is fixed and only content changes.
 
 ## Limitations
-Not ideal for highly dynamic, logic-driven, or user-customizable templates.
+Not ideal for highly dynamic, logic-driven or user-customizable templates.
 
 What this library does **not** do
 - No culture or localization support
