@@ -4,10 +4,8 @@ using CrudeTemplate.Extensions;
 namespace CrudeTemplate.Helpers;
 
 /// <summary>
-/// The templating solution uses the delimiters defined by <see cref="TemplateDelimiters.PlaceholderStart"/> and <see cref="TemplateDelimiters.PlaceholderEnd"/> around placeholders.
-/// If the delimiter characters themselves need to be used in the template output, they can be escaped using the <see cref="TemplateDelimiters.GreekEscapeCharacter"/> constant:
-/// - Use GreekEscapeCharacter + PlaceholderStart to output the character(s) represented by <see cref="TemplateDelimiters.PlaceholderStart"/>
-/// - Use PlaceholderEnd + GreekEscapeCharacter to output the character(s) represented by <see cref="TemplateDelimiters.PlaceholderEnd"/>
+/// Helper methods for template rendering and processing.
+/// For delimiter and escaping documentation, see <see cref="TemplateDelimiters"/>.
 /// </summary>
 public static class TemplateHelper
 {
@@ -25,7 +23,7 @@ public static class TemplateHelper
         ArgumentNullException.ThrowIfNull(textWithPlaceholders);
         ArgumentNullException.ThrowIfNull(valueComponents);
 
-        if (valueComponents is null || valueComponents.Count == 0)
+        if (valueComponents.Count == 0)
         {
             return textWithPlaceholders;
         }
@@ -34,18 +32,18 @@ public static class TemplateHelper
         {
             textWithPlaceholders = textWithPlaceholders.Replace(
                 component.Key.AsPlaceholder(),
-                string.IsNullOrEmpty(component.Value) ? string.Empty : component.Value);
+                component.Value);
         }
 
         return textWithPlaceholders;
     }
 
     /// <summary>
-    /// Converts all GreekEscapeCharacter + PlaceholderStart and PlaceholderEnd + GreekEscapeCharacter to the literal text represented by <see cref="TemplateDelimiters.PlaceholderStart"/> and <see cref="TemplateDelimiters.PlaceholderEnd"/>, respectively.
-    /// The placeholder delimiters (see <see cref="TemplateDelimiters.PlaceholderStart"/> and <see cref="TemplateDelimiters.PlaceholderEnd"/>) are reserved for placeholders. If the delimiter characters are needed in the output, they must be escaped as described using <see cref="TemplateDelimiters.GreekEscapeCharacter"/>.
+    /// Converts escaped placeholders to literal delimiter characters.
+    /// See <see cref="TemplateDelimiters"/> for escape sequence details.
     /// </summary>
     /// <param name="textToBeProcessed">The text that needs processing. Cannot be null.</param>
-    /// <returns>A processed text where all GreekEscapeCharacter + PlaceholderStart and PlaceholderEnd + GreekEscapeCharacter are converted to the text represented by <see cref="TemplateDelimiters.PlaceholderStart"/> and <see cref="TemplateDelimiters.PlaceholderEnd"/> respectively.</returns>
+    /// <returns>A processed text where escaped delimiters are converted to literal delimiters.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="textToBeProcessed"/> is null.</exception>
     public static string ReplaceEscapedPlaceholdersIfNeeded(string textToBeProcessed)
     {
@@ -58,7 +56,7 @@ public static class TemplateHelper
 
         textToBeProcessed = textToBeProcessed.Replace(TemplateDelimiters.EscapedStart, TemplateDelimiters.PlaceholderStart);
         textToBeProcessed = textToBeProcessed.Replace(TemplateDelimiters.EscapedEnd, TemplateDelimiters.PlaceholderEnd);
- 
+
         return textToBeProcessed;
     }
 }

@@ -11,6 +11,9 @@ namespace CrudeTemplate;
 /// This design enables the construction of complex, tree-structured templates where each node (template) can have its own text and a set of named child templates. The rendering process is deterministic and context-free: rendering a template always produces the same result given the same tree structure.
 /// </para>
 /// <para>
+/// <b>Escaping:</b> To output literal placeholder delimiters, see the escaping documentation in <see cref="TemplateDelimiters"/>.
+/// </para>
+/// <para>
 /// <b>Example:</b>
 /// <code language="csharp">
 /// var name = new Template("John");
@@ -42,7 +45,7 @@ namespace CrudeTemplate;
 /// </summary>
 public class Template
 {
-    private Dictionary<string, Template> _childTemplates = [];
+    private Dictionary<string, Template> childTemplates = [];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Template"/> class with the specified text and optional child templates.
@@ -51,7 +54,8 @@ public class Template
     /// <param name="childTemplates">The child templates for placeholders. If null, an empty dictionary is used. Each key should match a placeholder name in <paramref name="text"/>.</param>
     public Template(string text, Dictionary<string, Template>? childTemplates)
     {
-        Text = text ?? throw new ArgumentNullException(nameof(text));
+        ArgumentNullException.ThrowIfNull(text);
+        Text = text;
         ChildTemplates = childTemplates ?? [];
     }
 
@@ -70,37 +74,14 @@ public class Template
     /// </summary>
     public Dictionary<string, Template> ChildTemplates
     {
-        get => _childTemplates;
-        set => _childTemplates = value ?? [];
+        get => childTemplates;
+        set => childTemplates = value ?? [];
     }
 
     /// <summary>
     /// Gets or sets the template text. May contain placeholders (e.g., <c>{{Name}}</c>).
     /// </summary>
     public string Text { get; set; }
-
-    /// <summary>
-    /// Recursively renders the template and all its child templates, replacing placeholders with their rendered values.
-    /// </summary>
-    /// <param name="templateToProcess">The template to render. Cannot be null.</param>
-    /// <returns>The fully rendered template string, with all placeholders replaced by their corresponding child template output.</returns>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="templateToProcess"/> is null.</exception>
-    public static string RenderRecursively(Template templateToProcess)
-    {
-        ArgumentNullException.ThrowIfNull(templateToProcess);
-        Dictionary<string, string> finalTemplateValuesForPlaceholders = [];
-
-        if (templateToProcess.ChildTemplates.Count > 0)
-        {
-            foreach (KeyValuePair<string, Template> component in templateToProcess.ChildTemplates)
-            {
-                string processedComponentText = RenderRecursively(component.Value);
-                finalTemplateValuesForPlaceholders.Add(component.Key, processedComponentText);
-            }
-        }
-
-        return TemplateHelper.InjectPlaceholderValues(templateToProcess.Text, finalTemplateValuesForPlaceholders);
-    }
 
     /// <summary>
     /// Renders this template and all its child templates recursively, replacing all placeholders.
@@ -110,6 +91,7 @@ public class Template
     {
         string processed = RenderRecursively(this);
         processed = TemplateHelper.ReplaceEscapedPlaceholdersIfNeeded(processed);
+
         return processed;
     }
 
@@ -142,5 +124,28 @@ public class Template
     public Template WithText(string placeholder, string? childText)
     {
         return With(placeholder, new Template(childText ?? string.Empty));
+    }
+
+    /// <summary>
+    /// Recursively renders the template and all its child templates, replacing placeholders with their rendered values.
+    /// </summary>
+    /// <param name="templateToProcess">The template to render. Cannot be null.</param>
+    /// <returns>The fully rendered template string, with all placeholders replaced by their corresponding child template output.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="templateToProcess"/> is null.</exception>
+    private static string RenderRecursively(Template templateToProcess)
+    {
+        ArgumentNullException.ThrowIfNull(templateToProcess);
+        Dictionary<string, string> finalTemplateValuesForPlaceholders = [];
+
+        if (templateToProcess.ChildTemplates.Count > 0)
+        {
+            foreach (KeyValuePair<string, Template> component in templateToProcess.ChildTemplates)
+            {
+                string processedComponentText = RenderRecursively(component.Value);
+                finalTemplateValuesForPlaceholders.Add(component.Key, processedComponentText);
+            }
+        }
+
+        return TemplateHelper.InjectPlaceholderValues(templateToProcess.Text, finalTemplateValuesForPlaceholders);
     }
 }
