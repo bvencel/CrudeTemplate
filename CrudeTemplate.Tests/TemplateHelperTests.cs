@@ -1,5 +1,4 @@
 using CrudeTemplate.Constants;
-using CrudeTemplate.Extensions;
 using CrudeTemplate.Helpers;
 
 namespace CrudeTemplate.Tests;

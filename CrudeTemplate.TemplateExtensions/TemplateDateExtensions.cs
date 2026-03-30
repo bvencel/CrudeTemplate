@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace CrudeTemplate.Extensions;
+namespace CrudeTemplate.TemplateExtensions;
 
 /// <summary>
 /// Extension methods for adding formatted and localized dates to templates.
