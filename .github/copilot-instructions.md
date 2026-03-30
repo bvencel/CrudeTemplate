@@ -1,52 +1,61 @@
-# Contributing guidelines
+# Copilot instructions
 
-This document provides essential guidelines for contributing to CrudeTemplate. For general C# style and naming, refer to the official [Microsoft C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions) and [identifier naming rules](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/identifier-names). Only project-specific requirements are listed below.
+Act as a peer C# developer.  
+Be intellectually honest, critically evaluate ideas and avoid sycophancy or superficial agreement.  
+The priorities of the project are longevity and maintainability. This means all code must be easy to understand decades from now. There is no place for half-measures and more complications than necessary.
 
-## Markdown documentation
-- Use sentence case for headings and titles (e.g., "Contributing guidelines").
+## Style and formatting
 
-## Coding style
-- Write code with clarity and simplicity. Avoid complex or convoluted logic.
-- Use PascalCase for two-letter words (e.g., `AcVoltage`, `AiInputData`).
-- Prefer explicit type declarations over `var`, except when the type is obvious or required.
-- Never use `var` for types with 3-6 character names (e.g., always use `int`, `long`).
-- Always use braces `{}` for all control blocks, even single-line statements.
-- Write meaningful commit messages that clearly describe the intent and impact of the change.
+* No emdash or Oxford comma
+* Use sentence case for headers, lists, file names and everywhere where grammar does not specifically need uppercase (e.g. "New summaries to be sent.md", "#region Variables containing raw data")
+* Always use braces `{}` for control blocks. Leave existing `#region` directives but do not add new ones
+* Prefer file-scoped namespace declarations and single-line using directives
+* Ensure that the final return statement of a method is on its own line
+* For markdown (`.md`) files, ensure there is no trailing whitespace at the end of any line
 
 ## Naming conventions
-- Use descriptive, unambiguous names for all identifiers.
 
-## Code structure and readability
-- Keep methods short and focused.
-- Avoid magic numbers; use named constants or enums.
-- Organize code logically within projects.
-- Only 1 class/file.
-- All helper classes go in Helpers folder. All extension methods go in Extensions folder. Base entities are stored with entities.
+* Use descriptive PascalCase for acronyms (e.g. `AcVoltage`, `Dtos`) and avoid abbreviations (e.g. use `Percent`, not `Pct`)
+* Private fields must not have underscore prefixes
+* Use `nameof` instead of string literals when referring to member names
 
-## Tooling and quality
-- Use code organization tools (e.g., CodeMaid) to maintain consistency.
-- Use analyzers and ensure the code compiles without any warnings.
+## Architecture and C# rules
 
-## Nullability and type safety
-- Use nullable reference types and annotate accordingly.
-- Check for null arguments in public methods and throw `ArgumentNullException` as needed.
+* One class per file, strictly focused methods and no magic numbers
+* File-scoped namespaces matching the exact folder structure
+* Target latest .NET features (e.g. simplified `new`, `[]` for lists, `System.Threading.Lock`)
+* Prefer explicit types over `var` unless necessary. Never use `var` for 3 to 6 character types (e.g. `int`, `long`)
+* Always use explicit, indented, bracketed `else { if {` instead of `elseif`
+* Use the modernest features like
+  * Primary constructor
 
-## Error handling
-- Use exceptions for exceptional cases, not control flow.
-- Catch only exceptions you can handle; avoid empty catch blocks.
-- Log errors with enough context for troubleshooting.
+## Code practices
+
+* Strict nullability: use nullable reference types and `ArgumentNullException.ThrowIfNull`
+* Always use `is null` or `is not null` instead of `== null` or `!= null`
+* Trust the C# null annotations and don't add null checks when the type system says a value cannot be null
+* Use exceptions for control flow instead of result patterns. Catch specific exceptions and never leave catch blocks empty
+* Zero compiler warnings, validate all external inputs and never log sensitive data
+* Use pattern matching and switch expressions wherever possible
+* Suffix async methods with `Async`, strictly use `async`/`await` for I/O and pass `CancellationToken` through the entire chain
 
 ## Testing
-- Write unit tests for all new features and bug fixes.
-- Use descriptive names for test methods.
-- Ensure all tests pass before merging changes.
+
+* Use xUnit 3+ with the Arrange-Act-Assert pattern.
+* Exhaustively test nulls, boundaries and edge cases. Create reusable helper methods.
+* Never alter or delete a test just to force new code to pass. Test projects must end in `.Tests`.
+* When adding new unit tests, strongly prefer to add them to existing test code files rather than creating new code files.
+* When adding new test files, examine the directory structure of sibling tests first. Some test directories use flat files (e.g., `GcEvents.cs` alongside `GcEvents.csproj`) while others use per-test subdirectories. Match the existing convention.
+* Prefer using `[Theory]` with multiple data sources (like `[InlineData]` or `[MemberData]`) over multiple duplicative `[Fact]` methods. Fewer test methods that validate more inputs are better than many similar test methods.
+* When running tests, if possible use filters and check test run counts, or look at test logs, to ensure they actually ran.
+* Do not finish work with any tests commented out or disabled that were not previously commented out or disabled.
+* Focus unit tests on formula methods. If code can be modified to separate a formula into its own method, do that first, then test the formula. Ensure tests are maintainable and meaningful, providing the most value in checking formulas.
 
 ## Documentation
-- Use XML documentation comments for public APIs.
-- Keep documentation up to date with code changes.
-- Document non-obvious design decisions or workarounds.
-- Use Markdown for README files and other documentation.
 
----
+* Use XML docs for both public and private APIs. Document complex logic, parameter bounds, input formats and use examples (e.g. "--multiple-input-format example value: [90/60/0][19/160/10]")
+* When adding XML documentation to APIs, follow the guidelines at [`docs.prompt.md`](/.github/prompts/docs.prompt.md)
 
-By following these guidelines, we ensure a clean, consistent, and maintainable codebase for all contributors, including AI assistants. Thank you for helping make CrudeTemplate better!
+## Git and commits
+
+* When generating commit message or coderev comments prefix the comments with `[AI generated] `
