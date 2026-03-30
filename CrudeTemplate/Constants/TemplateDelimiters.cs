@@ -17,7 +17,7 @@
 /// <b>Example:</b> To render the text <c>{{literal}}</c>, use <c>Ø{{literal}}Ø</c> in the template.
 /// </para>
 /// </summary>
-public class TemplateDelimiters
+public static class TemplateDelimiters
 {
     /// <summary>
     /// The escape character used to escape placeholder delimiters. Set to <c>Ø</c> (Scandinavian letter O-with-stroke).
@@ -38,10 +38,10 @@ public class TemplateDelimiters
     /// <summary>
     /// The escape sequence for <see cref="PlaceholderEnd"/>. Renders as a literal <c>}}</c> in the final output.
     /// </summary>
-    public static string EscapedEnd => $"{ScandinavianEscapeCharacter}{PlaceholderEnd}";
+    public const string EscapedEnd = ScandinavianEscapeCharacter + PlaceholderEnd;
 
     /// <summary>
     /// The escape sequence for <see cref="PlaceholderStart"/>. Renders as a literal <c>{{</c> in the final output.
     /// </summary>
-    public static string EscapedStart => $"{ScandinavianEscapeCharacter}{PlaceholderStart}";
+    public const string EscapedStart = ScandinavianEscapeCharacter + PlaceholderStart;
 }

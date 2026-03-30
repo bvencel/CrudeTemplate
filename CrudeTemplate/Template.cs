@@ -134,16 +134,12 @@ public class Template
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="templateToProcess"/> is null.</exception>
     private static string RenderRecursively(Template templateToProcess)
     {
-        ArgumentNullException.ThrowIfNull(templateToProcess);
         Dictionary<string, string> finalTemplateValuesForPlaceholders = [];
 
-        if (templateToProcess.ChildTemplates.Count > 0)
+        foreach (KeyValuePair<string, Template> component in templateToProcess.ChildTemplates)
         {
-            foreach (KeyValuePair<string, Template> component in templateToProcess.ChildTemplates)
-            {
-                string processedComponentText = RenderRecursively(component.Value);
-                finalTemplateValuesForPlaceholders.Add(component.Key, processedComponentText);
-            }
+            string processedComponentText = RenderRecursively(component.Value);
+            finalTemplateValuesForPlaceholders.Add(component.Key, processedComponentText);
         }
 
         return TemplateHelper.InjectPlaceholderValues(templateToProcess.Text, finalTemplateValuesForPlaceholders);

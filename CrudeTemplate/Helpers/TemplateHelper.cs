@@ -49,11 +49,6 @@ public static class TemplateHelper
     {
         ArgumentNullException.ThrowIfNull(textToBeProcessed);
 
-        if (string.IsNullOrEmpty(textToBeProcessed))
-        {
-            return textToBeProcessed;
-        }
-
         textToBeProcessed = textToBeProcessed.Replace(TemplateDelimiters.EscapedStart, TemplateDelimiters.PlaceholderStart);
         textToBeProcessed = textToBeProcessed.Replace(TemplateDelimiters.EscapedEnd, TemplateDelimiters.PlaceholderEnd);
 
