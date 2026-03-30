@@ -3,7 +3,7 @@
 /// <summary>
 /// Extension methods for conditional template population.
 /// </summary>
-public static class TemplateConditionExtensions
+public static class ConditionExtensions
 {
     /// <summary>
     /// Evaluates a condition and injects the corresponding text into the placeholder.

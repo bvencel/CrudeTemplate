@@ -4,7 +4,7 @@
 /// Extension methods for manipulating string layout in templates.
 /// This is just a proof of concept.
 /// </summary>
-public static class TemplateLayoutExtensions
+public static class LayoutExtensions
 {
     /// <summary>
     /// Right-pads a string value to a specific total width before injecting it into the template.

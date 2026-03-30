@@ -5,7 +5,7 @@ namespace CrudeTemplate.TemplateExtensions;
 /// <summary>
 /// Extension methods for adding formatted and localized dates to templates.
 /// </summary>
-public static class TemplateDateExtensions
+public static class DateExtensions
 {
     /// <summary>
     /// Formats a date using the provided culture and adds it as a child template text.

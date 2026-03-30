@@ -4,7 +4,7 @@
 /// Extension methods for rendering collections into templates.
 /// This is just a proof of concept.
 /// </summary>
-public static class TemplateCollectionExtensions
+public static class CollectionExtensions
 {
     /// <summary>
     /// Joins a collection of items into a single string using a separator and injects it into the template.

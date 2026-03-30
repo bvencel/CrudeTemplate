@@ -6,7 +6,7 @@ namespace CrudeTemplate.TemplateExtensions;
 /// Extension methods for formatting numeric and currency values in templates.
 /// This is just a proof of concept.
 /// </summary>
-public static class TemplateNumberExtensions
+public static class NumberExtensions
 {
     /// <summary>
     /// Formats a decimal as a culture-specific currency string and adds it as a child template.
@@ -27,6 +27,24 @@ public static class TemplateNumberExtensions
 
         string formattedCurrency = amount.ToString("C", cultureInfo);
         return template.WithText(placeholder, formattedCurrency);
+    }
+
+    /// <summary>
+    /// Formats a decimal as a culture-specific number string using the general numeric ("N") format
+    /// and adds it as a child template.
+    /// </summary>
+    /// <param name="template">The parent template. Cannot be null.</param>
+    /// <param name="placeholder">The name of the placeholder.</param>
+    /// <param name="value">The numeric value to format.</param>
+    /// <param name="cultureInfo">The culture info to use for formatting. Cannot be null.</param>
+    /// <returns>This <see cref="Template"/> instance with the formatted number text added.</returns>
+    public static Template WithNumber(
+        this Template template,
+        string placeholder,
+        decimal value,
+        CultureInfo cultureInfo)
+    {
+        return template.WithNumber(placeholder, value, "N", cultureInfo);
     }
 
     /// <summary>
