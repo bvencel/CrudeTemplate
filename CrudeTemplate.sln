@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36301.6
+# Visual Studio Version 18
+VisualStudioVersion = 18.5.11619.145 insiders
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
 	ProjectSection(SolutionItems) = preProject
@@ -12,6 +12,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrudeTemplate", "CrudeTemplate\CrudeTemplate.csproj", "{95C3D3F9-4209-472C-8FC3-389478853709}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrudeTemplate.Tests", "CrudeTemplate.Tests\CrudeTemplate.Tests.csproj", "{A181F176-2927-4356-9631-BC228939DEB5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrudeTemplate.TemplateExtensions", "CrudeTemplate.TemplateExtensions\CrudeTemplate.TemplateExtensions.csproj", "{AB6AE2EC-4522-4FAE-8968-D7C36DFA654C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{A181F176-2927-4356-9631-BC228939DEB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A181F176-2927-4356-9631-BC228939DEB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A181F176-2927-4356-9631-BC228939DEB5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB6AE2EC-4522-4FAE-8968-D7C36DFA654C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB6AE2EC-4522-4FAE-8968-D7C36DFA654C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB6AE2EC-4522-4FAE-8968-D7C36DFA654C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB6AE2EC-4522-4FAE-8968-D7C36DFA654C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
