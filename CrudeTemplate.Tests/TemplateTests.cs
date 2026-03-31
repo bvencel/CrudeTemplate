@@ -19,7 +19,7 @@ public class TemplateTests
     private const string PlaceholderOrderId = "OrderId";
 
     /// <summary>
-    /// Test cases for <see cref="Template.ReplaceEscapedPlaceholdersIfNeeded"/>:
+    /// Test cases for <see cref="Template.ReplaceEscapedPlaceholders"/>:
     /// empty string, no escape sequences, escaped start and end, consecutive escapes, mixed content.
     /// </summary>
     public static TheoryData<string, string> EscapeReplacementCases => new()
@@ -109,7 +109,7 @@ public class TemplateTests
     public void InjectPlaceholderValues_NullText_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            Template.InjectPlaceholderValues(null!, []));
+            Template.InjectPlaceholderValues(null!, new Dictionary<string, string>()));
     }
 
     [Fact]
@@ -473,18 +473,18 @@ public class TemplateTests
     }
 
     [Fact]
-    public void ReplaceEscapedPlaceholdersIfNeeded_NullText_ThrowsArgumentNullException()
+    public void ReplaceEscapedPlaceholders_NullText_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            Template.ReplaceEscapedPlaceholdersIfNeeded(null!));
+            Template.ReplaceEscapedPlaceholders(null!));
     }
 
     [Theory]
     [MemberData(nameof(EscapeReplacementCases))]
-    public void ReplaceEscapedPlaceholdersIfNeeded_ProcessesEscapedDelimiters(
+    public void ReplaceEscapedPlaceholders_ProcessesEscapedDelimiters(
         string input, string expected)
     {
-        string result = Template.ReplaceEscapedPlaceholdersIfNeeded(input);
+        string result = Template.ReplaceEscapedPlaceholders(input);
 
         Assert.Equal(expected, result);
     }
@@ -537,5 +537,74 @@ public class TemplateTests
         template.WithText("Name", null);
         string result = template.Render();
         Assert.Equal("Hello, !", result);
+    }
+
+    [Fact]
+    public void CloneTemplate_ProducesDeepCopy_IndependentOfOriginal()
+    {
+        // Arrange
+        Template original = new Template("Hello, {{Name}}!")
+            .WithText("Name", "Alice");
+
+        // Act
+        Template clone = original.CloneTemplate();
+        clone.WithText("Name", "Bob");
+        clone.Text = "Goodbye, {{Name}}!";
+
+        // Assert: original is unaffected
+        Assert.Equal("Hello, Alice!", original.Render());
+        Assert.Equal("Goodbye, Bob!", clone.Render());
+    }
+
+    [Fact]
+    public void CloneTemplate_DeeplyNestedTree_ClonesAllLevels()
+    {
+        // Arrange
+        Template innermost = new("leaf");
+        Template middle = new Template("{{Inner}}").With("Inner", innermost);
+        Template root = new Template("{{Mid}}").With("Mid", middle);
+
+        // Act
+        Template clone = root.CloneTemplate();
+        innermost.Text = "MUTATED";
+
+        // Assert: clone is independent of original mutation
+        Assert.Equal("leaf", clone.Render());
+        Assert.Equal("MUTATED", root.Render());
+    }
+
+    [Fact]
+    public void Clone_ReturnsObjectThatCanBeCastToTemplate()
+    {
+        Template original = new("Hello");
+
+        object cloned = original.Clone();
+
+        Assert.IsType<Template>(cloned);
+        Assert.Equal("Hello", ((Template)cloned).Render());
+    }
+
+    [Theory]
+    [InlineData("Hello {{", "Hello {{")]
+    [InlineData("{{unclosed", "{{unclosed")]
+    [InlineData("text {{ more text", "text {{ more text")]
+    public void InjectPlaceholderValues_UnclosedDelimiter_EmitsVerbatim(string input, string expected)
+    {
+        Dictionary<string, string> components = new() { ["Key"] = "Value" };
+
+        string result = Template.InjectPlaceholderValues(input, components);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void CloneTemplate_EmptyTemplate_ProducesEmptyCopy()
+    {
+        Template original = new(string.Empty);
+
+        Template clone = original.CloneTemplate();
+
+        Assert.Equal(string.Empty, clone.Render());
+        Assert.Empty(clone.ChildTemplates);
     }
 }

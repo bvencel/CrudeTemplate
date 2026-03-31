@@ -31,7 +31,7 @@ public class DateExtensionsTests
         Template template = new("Date: {{Date}}");
 
         // Act
-        template.WithLocalizedDate("Date", date, culture, "yyyy-MM-dd");
+        template.WithLocalizedDate("Date", date, "yyyy-MM-dd", culture);
         string result = template.Render();
 
         // Assert
@@ -74,5 +74,14 @@ public class DateExtensionsTests
 
         Assert.Throws<ArgumentNullException>(() =>
             template.WithLocalizedDate("Key", DateTime.Now, null!));
+    }
+
+    [Fact]
+    public void WithLocalizedDate_NullFormat_ThrowsArgumentNullException()
+    {
+        Template template = new("{{Key}}");
+
+        Assert.Throws<ArgumentNullException>(() =>
+            template.WithLocalizedDate("Key", DateTime.Now, null!, CultureInfo.InvariantCulture));
     }
 }

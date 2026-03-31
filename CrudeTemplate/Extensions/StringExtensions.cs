@@ -8,9 +8,14 @@ namespace CrudeTemplate.Extensions;
 public static class StringExtensions
 {
     /// <summary>
-    /// Wraps the given key in placeholder delimiters to produce a placeholder token
-    /// (e.g. <c>"Name"</c> becomes <c>"{{Name}}"</c>).
+    /// Wraps the given key in placeholder delimiters to produce a placeholder token.
     /// </summary>
+    /// <example>
+    /// <code language="csharp">
+    /// "Name".AsPlaceholder()    // returns "{{Name}}"
+    /// "OrderId".AsPlaceholder() // returns "{{OrderId}}"
+    /// </code>
+    /// </example>
     /// <param name="key">The placeholder name to wrap.</param>
     /// <returns>The key wrapped in <see cref="TemplateDelimiters.PlaceholderStart"/> and <see cref="TemplateDelimiters.PlaceholderEnd"/>.</returns>
     public static string AsPlaceholder(this string key)

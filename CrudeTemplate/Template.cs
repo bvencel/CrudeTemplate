@@ -59,10 +59,10 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     /// <exception cref="ArgumentNullException">
     /// <paramref name="textWithPlaceholders"/> or <paramref name="valueComponents"/> is <see langword="null"/>.
     /// </exception>
-    public static string InjectPlaceholderValues(string textWithPlaceholders, Dictionary<string, string> valueComponents)
+    public static string InjectPlaceholderValues(string textWithPlaceholders, IDictionary<string, string> valueComponents)
     {
         /*
-            Benchmarked this method against string.Replace (called "Simple" int he table below):
+            Benchmarked this method against string.Replace (called "Simple" in the table below):
 
             | Method            | Mean         | Error      | StdDev     |
             |------------------ |-------------:|-----------:|-----------:|
@@ -149,17 +149,14 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     }
 
     /// <summary>
-    /// Replace the placeholders with values in the given text.
-    /// Not as efficient as <see cref="InjectPlaceholderValues"/>.
-    /// Kept for benchmarking purposes.
+    /// Replaces the placeholders with values in the given text using repeated <see cref="string.Replace(string, string)"/> calls.
+    /// Less efficient than <see cref="InjectPlaceholderValues"/> for medium-to-large inputs. Kept for benchmarking comparison.
     /// </summary>
-    /// <param name="textWithPlaceholders">The text with placeholders. Cannot be null.</param>
-    /// <param name="valueComponents">The components to be replaced. Cannot be null.</param>
-    /// <returns>
-    /// The text with replaced placeholders.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="textWithPlaceholders"/> or <paramref name="valueComponents"/> is null.</exception>
-    public static string InjectPlaceholderValuesSimple(string textWithPlaceholders, Dictionary<string, string> valueComponents)
+    /// <param name="textWithPlaceholders">The text with placeholders. Cannot be <see langword="null"/>.</param>
+    /// <param name="valueComponents">The components to be replaced. Cannot be <see langword="null"/>.</param>
+    /// <returns>The text with replaced placeholders.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="textWithPlaceholders"/> or <paramref name="valueComponents"/> is <see langword="null"/>.</exception>
+    internal static string InjectPlaceholderValuesSimple(string textWithPlaceholders, Dictionary<string, string> valueComponents)
     {
         ArgumentNullException.ThrowIfNull(textWithPlaceholders);
         ArgumentNullException.ThrowIfNull(valueComponents);
@@ -180,13 +177,19 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     }
 
     /// <summary>
-    /// Converts escaped placeholders to literal delimiter characters.
+    /// Converts escaped placeholder delimiters to their literal characters.
     /// See <see cref="TemplateDelimiters"/> for escape sequence details.
     /// </summary>
-    /// <param name="textToBeProcessed">The text that needs processing. Cannot be null.</param>
-    /// <returns>A processed text where escaped delimiters are converted to literal delimiters.</returns>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="textToBeProcessed"/> is null.</exception>
-    public static string ReplaceEscapedPlaceholdersIfNeeded(string textToBeProcessed)
+    /// <example>
+    /// <code language="csharp">
+    /// // Input:  "Ø{{NameØ}}"  →  Output: "{{Name}}"
+    /// string result = Template.ReplaceEscapedPlaceholders("Ø{{NameØ}}");
+    /// </code>
+    /// </example>
+    /// <param name="textToBeProcessed">The text that needs processing. Cannot be <see langword="null"/>.</param>
+    /// <returns>The text with escaped delimiters converted to literal delimiters.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="textToBeProcessed"/> is <see langword="null"/>.</exception>
+    public static string ReplaceEscapedPlaceholders(string textToBeProcessed)
     {
         ArgumentNullException.ThrowIfNull(textToBeProcessed);
 
@@ -197,9 +200,9 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     }
 
     /// <summary>
-    /// Creates a deep copy of this template and recursively cloning all child templates.
+    /// Creates a deep copy of this template, recursively cloning all child templates.
     /// </summary>
-    /// <returns>A new and deeply cloned <see cref="Template"/> instance.</returns>
+    /// <returns>A new, deeply cloned <see cref="Template"/> instance.</returns>
     public object Clone()
     {
         Template clonedTemplate = CloneTemplate();
@@ -208,10 +211,10 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     }
 
     /// <summary>
-    /// Creates a deep copy of this template and recursively cloning all child templates.
+    /// Creates a deep copy of this template, recursively cloning all child templates.
     /// Strongly typed for convenience.
     /// </summary>
-    /// <returns>A new and deeply cloned <see cref="Template"/> instance.</returns>
+    /// <returns>A new, deeply cloned <see cref="Template"/> instance.</returns>
     public Template CloneTemplate()
     {
         Dictionary<string, Template> clonedChildren = [];
@@ -227,7 +230,7 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     }
 
     /// <summary>
-    /// Renders this template and all its child templates recursively and replacing all structural placeholders.
+    /// Renders this template and all its child templates recursively, replacing all structural placeholders.
     /// This method is purely functional and does not mutate the template instance.
     /// </summary>
     /// <returns>The fully rendered template string.</returns>
@@ -235,13 +238,13 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     public string Render()
     {
         string processed = RenderRecursively(this, 0);
-        processed = ReplaceEscapedPlaceholdersIfNeeded(processed);
+        processed = ReplaceEscapedPlaceholders(processed);
 
         return processed;
     }
 
     /// <summary>
-    /// Renders this template and all its child templates recursively and replacing all placeholders with structure and runtime data.
+    /// Renders this template and all its child templates recursively, replacing all placeholders with structure and runtime data.
     /// This method is purely functional and does not mutate the template instance.
     /// </summary>
     /// <param name="primitives">A dictionary of primitive string values to inject at render time (e.g. exact timestamps and names). Cannot be null.</param>
@@ -253,8 +256,8 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
         ArgumentNullException.ThrowIfNull(primitives);
 
         string processed = RenderRecursively(this, 0);
-        processed = InjectPlaceholderValues(processed, new Dictionary<string, string>(primitives));
-        processed = ReplaceEscapedPlaceholdersIfNeeded(processed);
+        processed = InjectPlaceholderValues(processed, primitives);
+        processed = ReplaceEscapedPlaceholders(processed);
 
         return processed;
     }
@@ -273,8 +276,7 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
             throw new ArgumentException("Placeholder must not be null or empty or whitespace.", nameof(placeholder));
         }
 
-        Template finalChildTemplate = childTemplate is null ? new Template(string.Empty) : childTemplate;
-        ChildTemplates[placeholder] = finalChildTemplate;
+        ChildTemplates[placeholder] = childTemplate ?? new Template(string.Empty);
 
         return this;
     }
@@ -288,14 +290,11 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     /// <exception cref="ArgumentException">Thrown if <paramref name="placeholder"/> is null or empty or whitespace.</exception>
     public Template WithText(string placeholder, string? childText)
     {
-        string finalText = childText is null ? string.Empty : childText;
-        Template newChildTemplate = new(finalText);
-
-        return With(placeholder, newChildTemplate);
+        return With(placeholder, new Template(childText ?? string.Empty));
     }
 
     /// <summary>
-    /// Recursively renders the template and all its child templates and replacing only structural placeholders.
+    /// Recursively renders the template and all its child templates, replacing only structural placeholders.
     /// Primitives are not applied here; they are injected once after the full tree is resolved.
     /// </summary>
     /// <param name="templateToProcess">The template to process in the current recursion step.</param>
