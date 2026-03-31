@@ -26,6 +26,12 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     private const int MaxRecursionDepth = 100;
 
     /// <summary>
+    /// Shared empty dictionary used by the parameterless <see cref="Render()"/> overload to avoid allocating a new instance on every call.
+    /// Safe to share because <see cref="RenderRecursively"/> never mutates the primitives dictionary.
+    /// </summary>
+    private static readonly Dictionary<string, string> EmptyPrimitives = [];
+
+    /// <summary>
     /// Gets or sets the dictionary of child templates (structural placeholders). Never null.
     /// Each key corresponds to a placeholder name in the template text and the value is the <see cref="Template"/> to substitute.
     /// </summary>
@@ -117,15 +123,30 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     }
 
     /// <summary>
+    /// Renders this template and all its child templates recursively and replacing all structural placeholders.
+    /// This method is purely functional and does not mutate the template instance.
+    /// </summary>
+    /// <returns>The fully rendered template string.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the template tree exceeds the maximum recursion depth and indicating a likely circular reference.</exception>
+    public string Render()
+    {
+        string processed = RenderRecursively(this, EmptyPrimitives, 0);
+        processed = ReplaceEscapedPlaceholdersIfNeeded(processed);
+
+        return processed;
+    }
+
+    /// <summary>
     /// Renders this template and all its child templates recursively and replacing all placeholders with structure and runtime data.
     /// This method is purely functional and does not mutate the template instance.
     /// </summary>
-    /// <param name="primitives">A dictionary of primitive string values to inject at render time (e.g. exact timestamps and names). Optional.</param>
+    /// <param name="primitives">A dictionary of primitive string values to inject at render time (e.g. exact timestamps and names). Cannot be null.</param>
     /// <returns>The fully rendered template string.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="primitives"/> is null.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the template tree exceeds the maximum recursion depth and indicating a likely circular reference.</exception>
-    public string Render(IDictionary<string, string>? primitives = null)
+    public string Render(IDictionary<string, string> primitives)
     {
-        primitives ??= new Dictionary<string, string>();
+        ArgumentNullException.ThrowIfNull(primitives);
 
         string processed = RenderRecursively(this, primitives, 0);
         processed = ReplaceEscapedPlaceholdersIfNeeded(processed);

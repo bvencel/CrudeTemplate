@@ -18,6 +18,35 @@ public class TemplateTests
     private const string PlaceholderName = "Name";
     private const string PlaceholderOrderId = "OrderId";
 
+    /// <summary>
+    /// Test cases for <see cref="Template.ReplaceEscapedPlaceholdersIfNeeded"/>:
+    /// empty string, no escape sequences, escaped start and end, consecutive escapes, mixed content.
+    /// </summary>
+    public static TheoryData<string, string> EscapeReplacementCases => new()
+    {
+        { "", "" },
+        { "no escapes here", "no escapes here" },
+        { TemplateDelimiters.EscapedStart + "Name" + TemplateDelimiters.EscapedEnd, "{{Name}}" },
+        { "before " + TemplateDelimiters.EscapedStart + "X" + TemplateDelimiters.EscapedEnd + " after", "before {{X}} after" },
+        { TemplateDelimiters.EscapedStart + TemplateDelimiters.EscapedStart, "{{{{" },
+        { TemplateDelimiters.EscapedEnd + TemplateDelimiters.EscapedEnd, "}}}}" },
+    };
+
+    /// <summary>
+    /// Test cases for <see cref="Template.InjectPlaceholderValues"/>:
+    /// empty dictionary, single replacement, multiple replacements, unmatched key, empty value, repeated placeholder, empty text.
+    /// </summary>
+    public static TheoryData<string, Dictionary<string, string>, string> ReplacementCases => new()
+    {
+        { "Hello, {{Name}}!", new Dictionary<string, string>(), "Hello, {{Name}}!" },
+        { "Hello, {{Name}}!", new Dictionary<string, string> { ["Name"] = "World" }, "Hello, World!" },
+        { "{{A}} and {{B}}", new Dictionary<string, string> { ["A"] = "1", ["B"] = "2" }, "1 and 2" },
+        { "No placeholders", new Dictionary<string, string> { ["Key"] = "Value" }, "No placeholders" },
+        { "", new Dictionary<string, string> { ["Key"] = "Value" }, "" },
+        { "Hello, {{Name}}!", new Dictionary<string, string> { ["Name"] = "" }, "Hello, !" },
+        { "{{X}} and {{X}}", new Dictionary<string, string> { ["X"] = "42" }, "42 and 42" },
+    };
+
     private static string Body => $"Your order {PlaceholderOrderId.AsPlaceholder()} has shipped.";
 
     private static string Email =>
@@ -77,12 +106,43 @@ public class TemplateTests
     }
 
     [Fact]
-    public void Render_ConsecutiveEscapedDelimiters_HandlesCorrectly()
+    public void InjectPlaceholderValues_NullText_ThrowsArgumentNullException()
     {
-        string templateText = $"{TemplateDelimiters.EscapedStart}{TemplateDelimiters.EscapedStart}test{TemplateDelimiters.EscapedEnd}{TemplateDelimiters.EscapedEnd}";
-        Template template = new(templateText);
-        string result = template.Render();
-        Assert.Equal("{{{{test}}}}", result);
+        Assert.Throws<ArgumentNullException>(() =>
+            Template.InjectPlaceholderValues(null!, []));
+    }
+
+    [Fact]
+    public void InjectPlaceholderValues_NullValueComponents_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            Template.InjectPlaceholderValues("text", null!));
+    }
+
+    [Theory]
+    [MemberData(nameof(ReplacementCases), DisableDiscoveryEnumeration = true)]
+    public void InjectPlaceholderValues_WithComponents_ProducesExpectedResult(
+        string text, Dictionary<string, string> components, string expected)
+    {
+        string result = Template.InjectPlaceholderValues(text, components);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void Render_ChildTemplateOverridesPrimitiveForSameKey()
+    {
+        // Arrange: "Name" is both a child template and a primitive
+        Template template = new Template("Hello, {{Name}}!")
+            .WithText("Name", "Alice");
+
+        Dictionary<string, string> primitives = new() { ["Name"] = "Bob" };
+
+        // Act
+        string result = template.Render(primitives);
+
+        // Assert: structural child template takes precedence
+        Assert.Equal("Hello, Alice!", result);
     }
 
     /// <summary>
@@ -100,6 +160,15 @@ public class TemplateTests
 
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() => templateA.Render());
+    }
+
+    [Fact]
+    public void Render_ConsecutiveEscapedDelimiters_HandlesCorrectly()
+    {
+        string templateText = $"{TemplateDelimiters.EscapedStart}{TemplateDelimiters.EscapedStart}test{TemplateDelimiters.EscapedEnd}{TemplateDelimiters.EscapedEnd}";
+        Template template = new(templateText);
+        string result = template.Render();
+        Assert.Equal("{{{{test}}}}", result);
     }
 
     /// <summary>
@@ -270,6 +339,25 @@ public class TemplateTests
         Assert.Equal(text, result);
     }
 
+    [Fact]
+    public void Render_PrimitivesFlowIntoChildTemplates()
+    {
+        // Arrange: parent has no knowledge of "Sender", but the child does
+        Template footer = new("Kind regards,\n{{Sender}}");
+        Template email = new Template("{{Body}}\n\n{{Footer}}")
+            .WithText("Body", "Some content.")
+            .With("Footer", footer);
+
+        Dictionary<string, string> primitives = new() { ["Sender"] = "ACME Corp" };
+
+        // Act
+        string result = email.Render(primitives);
+
+        // Assert
+        Assert.Contains("ACME Corp", result);
+        Assert.DoesNotContain("{{Sender}}", result);
+    }
+
     /// <summary>
     /// Creates and renders a template tree and asserts the output is non-empty and contains expected node and leaf text.
     /// </summary>
@@ -334,6 +422,71 @@ public class TemplateTests
         // Assert
         Assert.Contains("Alice", result);
         Assert.Contains("Id".AsPlaceholder(), result);
+    }
+
+    [Fact]
+    public void Render_WithEmptyPrimitives_BehavesSameAsParameterless()
+    {
+        // Arrange
+        Template template = new Template("Hello, {{Name}}!")
+            .WithText("Name", "Alice");
+
+        // Act
+        string withEmpty = template.Render(new Dictionary<string, string>());
+        string withoutPrimitives = template.Render();
+
+        // Assert
+        Assert.Equal(withoutPrimitives, withEmpty);
+    }
+
+    [Fact]
+    public void Render_WithPrimitives_InjectsRuntimeValues()
+    {
+        // Arrange: structure assembled once, primitives provided at render time
+        Template body = new("Your order {{OrderId}} shipped on {{ShipDate}}.");
+        Template email = new Template("Dear {{Recipient}},\n\n{{Body}}")
+            .With("Body", body);
+
+        Dictionary<string, string> primitives = new()
+        {
+            ["Recipient"] = "John",
+            ["OrderId"] = "#1234",
+            ["ShipDate"] = "2025-01-15"
+        };
+
+        // Act
+        string result = email.Render(primitives);
+
+        // Assert
+        Assert.Contains("John", result);
+        Assert.Contains("#1234", result);
+        Assert.Contains("2025-01-15", result);
+        Assert.DoesNotContain(TemplateDelimiters.PlaceholderStart, result);
+    }
+
+    [Fact]
+    public void Render_WithPrimitives_NullDictionary_ThrowsArgumentNullException()
+    {
+        Template template = new("Hello");
+
+        Assert.Throws<ArgumentNullException>(() => template.Render(null!));
+    }
+
+    [Fact]
+    public void ReplaceEscapedPlaceholdersIfNeeded_NullText_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            Template.ReplaceEscapedPlaceholdersIfNeeded(null!));
+    }
+
+    [Theory]
+    [MemberData(nameof(EscapeReplacementCases))]
+    public void ReplaceEscapedPlaceholdersIfNeeded_ProcessesEscapedDelimiters(
+        string input, string expected)
+    {
+        string result = Template.ReplaceEscapedPlaceholdersIfNeeded(input);
+
+        Assert.Equal(expected, result);
     }
 
     [Fact]
