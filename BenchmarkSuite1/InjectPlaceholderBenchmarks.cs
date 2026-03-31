@@ -2,6 +2,8 @@ using BenchmarkDotNet.Attributes;
 using CrudeTemplate;
 using Microsoft.VSDiagnostics;
 
+namespace BenchmarkSuite1;
+
 [CPUUsageDiagnoser]
 public class InjectPlaceholderBenchmarks
 {
@@ -39,7 +41,8 @@ public class InjectPlaceholderBenchmarks
         };
         // Large: repeated block with 50 placeholders
         System.Text.StringBuilder builder = new();
-        largeValues = new Dictionary<string, string>();
+        largeValues = [];
+        
         for (int i = 0; i < 50; i++)
         {
             builder.Append($"Item {{{{Key{i}}}}} has value. ");
