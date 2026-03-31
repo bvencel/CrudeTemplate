@@ -34,6 +34,7 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     public Dictionary<string, Template> ChildTemplates
     {
         get => field;
+
         set => field = value ?? [];
     } = childTemplates ?? [];
 
@@ -100,7 +101,7 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
             if (startIndex < 0)
             {
                 // No more opening delimiters – append the remaining text and stop.
-                result.Append(text[position..]);
+                _ = result.Append(text[position..]);
 
                 break;
             }
@@ -109,7 +110,7 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
             startIndex += position;
 
             // Append everything between the cursor and the opening delimiter (literal text).
-            result.Append(text[position..startIndex]);
+            _ = result.Append(text[position..startIndex]);
 
             // --- Step 2: Find the matching closing delimiter "}}" after the opening delimiter. ---
             int contentStart = startIndex + TemplateDelimiters.PlaceholderStart.Length;
@@ -118,7 +119,7 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
             if (endIndex < 0)
             {
                 // Opening delimiter with no closing counterpart – emit everything from "{{" onward as-is.
-                result.Append(text[startIndex..]);
+                _ = result.Append(text[startIndex..]);
 
                 break;
             }
@@ -132,12 +133,12 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
             // --- Step 4: Replace the placeholder if a value exists; otherwise keep the original token. ---
             if (valueComponents.TryGetValue(placeholderName, out string? replacement))
             {
-                result.Append(replacement);
+                _ = result.Append(replacement);
             }
             else
             {
                 // No matching value – preserve the full "{{Name}}" token verbatim.
-                result.Append(text[startIndex..(endIndex + TemplateDelimiters.PlaceholderEnd.Length)]);
+                _ = result.Append(text[startIndex..(endIndex + TemplateDelimiters.PlaceholderEnd.Length)]);
             }
 
             // Advance the cursor past the closing delimiter for the next iteration.
