@@ -182,4 +182,4 @@ The core logic recursively processes template trees, replacing placeholders with
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on code style, testing and documentation.
 
-![Tests](https://github.com/bvencel/CrudeTemplate/actions/workflows/tests.yml/badge.svg)
+![Tests](https://github.com/bvencel/CrudeTemplate/actions/workflows/dotnet.yml/badge.svg)
