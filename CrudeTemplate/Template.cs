@@ -1,6 +1,8 @@
 ﻿using CrudeTemplate.Constants;
 using CrudeTemplate.Extensions;
 
+using System.Text;
+
 namespace CrudeTemplate;
 
 /// <summary>
@@ -26,12 +28,6 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     private const int MaxRecursionDepth = 100;
 
     /// <summary>
-    /// Shared empty dictionary used by the parameterless <see cref="Render()"/> overload to avoid allocating a new instance on every call.
-    /// Safe to share because <see cref="RenderRecursively"/> never mutates the primitives dictionary.
-    /// </summary>
-    private static readonly Dictionary<string, string> EmptyPrimitives = [];
-
-    /// <summary>
     /// Gets or sets the dictionary of child templates (structural placeholders). Never null.
     /// Each key corresponds to a placeholder name in the template text and the value is the <see cref="Template"/> to substitute.
     /// </summary>
@@ -47,7 +43,114 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     public string Text { get; set; } = text ?? throw new ArgumentNullException(nameof(text));
 
     /// <summary>
+    /// Replaces placeholders with values in the given text using a single-pass scan.
+    /// </summary>
+    /// <remarks>
+    /// Scans the text once for <c>{{…}}</c> delimiters, looks up each placeholder name in the dictionary
+    /// and emits the replacement value or the original placeholder token if no match is found.
+    /// Unmatched opening delimiters (no corresponding closing delimiter) are emitted verbatim.
+    /// </remarks>
+    /// <param name="textWithPlaceholders">The text containing zero or more <c>{{Name}}</c>-style placeholders.</param>
+    /// <param name="valueComponents">
+    /// The replacement values keyed by raw placeholder name (e.g. <c>"Name"</c>, not <c>"{{Name}}"</c>).
+    /// </param>
+    /// <returns>The text with all matched placeholders replaced by their corresponding values.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="textWithPlaceholders"/> or <paramref name="valueComponents"/> is <see langword="null"/>.
+    /// </exception>
+    public static string InjectPlaceholderValues(string textWithPlaceholders, Dictionary<string, string> valueComponents)
+    {
+        /*
+            Benchmarked this method against string.Replace (called "Simple" int he table below):
+
+            | Method            | Mean         | Error      | StdDev     |
+            |------------------ |-------------:|-----------:|-----------:|
+            | SinglePass_Small  |     97.37 ns |   1.756 ns |   1.643 ns |
+            | Simple_Small      |     86.39 ns |   1.668 ns |   1.479 ns |
+            | SinglePass_Medium |    353.58 ns |   3.575 ns |   3.344 ns |
+            | Simple_Medium     |    458.13 ns |   9.082 ns |   8.919 ns |
+            | SinglePass_Large  |  1,676.70 ns |  32.165 ns |  30.087 ns |
+            | Simple_Large      | 11,297.54 ns | 162.141 ns | 143.734 ns |
+
+            - Using string.Replace wins only at very small scale (3 placeholders, ~11 ns advantage) because it avoids the StringBuilder overhead and performs just 3 string.Replace calls directly.
+            - InjectPlaceholderValues(string, Dictionary<string, string>) (single-pass) dominates at medium and large scale. Its advantage grows dramatically with placeholder count because it scans the text exactly once, while the "Simple" version calls string.Replace in a loop — each call re-scans and reallocates the entire string, giving it O(n × m) behavior (n = text length, m = placeholder count).
+            - Bottom line: InjectPlaceholderValues(string, Dictionary<string, string>) is the faster method for any realistic template size. The string.Replace variant only has a marginal edge for trivially small inputs.
+        */
+
+        ArgumentNullException.ThrowIfNull(textWithPlaceholders);
+        ArgumentNullException.ThrowIfNull(valueComponents);
+
+        // Nothing to replace – return early to avoid allocating a StringBuilder.
+        if (valueComponents.Count == 0)
+        {
+            return textWithPlaceholders;
+        }
+
+        ReadOnlySpan<char> text = textWithPlaceholders.AsSpan();
+        StringBuilder result = new(textWithPlaceholders.Length);
+
+        // 'position' is the cursor that advances through the text exactly once (single-pass).
+        int position = 0;
+
+        while (position < text.Length)
+        {
+            // --- Step 1: Find the next opening delimiter "{{" from the current position. ---
+            int startIndex = text[position..].IndexOf(TemplateDelimiters.PlaceholderStart);
+
+            if (startIndex < 0)
+            {
+                // No more opening delimiters – append the remaining text and stop.
+                result.Append(text[position..]);
+
+                break;
+            }
+
+            // Convert the relative index to an absolute index within the full text.
+            startIndex += position;
+
+            // Append everything between the cursor and the opening delimiter (literal text).
+            result.Append(text[position..startIndex]);
+
+            // --- Step 2: Find the matching closing delimiter "}}" after the opening delimiter. ---
+            int contentStart = startIndex + TemplateDelimiters.PlaceholderStart.Length;
+            int endIndex = text[contentStart..].IndexOf(TemplateDelimiters.PlaceholderEnd);
+
+            if (endIndex < 0)
+            {
+                // Opening delimiter with no closing counterpart – emit everything from "{{" onward as-is.
+                result.Append(text[startIndex..]);
+
+                break;
+            }
+
+            // Convert the relative index to an absolute index.
+            endIndex += contentStart;
+
+            // --- Step 3: Extract the placeholder name between "{{" and "}}". ---
+            string placeholderName = text[contentStart..endIndex].ToString();
+
+            // --- Step 4: Replace the placeholder if a value exists; otherwise keep the original token. ---
+            if (valueComponents.TryGetValue(placeholderName, out string? replacement))
+            {
+                result.Append(replacement);
+            }
+            else
+            {
+                // No matching value – preserve the full "{{Name}}" token verbatim.
+                result.Append(text[startIndex..(endIndex + TemplateDelimiters.PlaceholderEnd.Length)]);
+            }
+
+            // Advance the cursor past the closing delimiter for the next iteration.
+            position = endIndex + TemplateDelimiters.PlaceholderEnd.Length;
+        }
+
+        return result.ToString();
+    }
+
+    /// <summary>
     /// Replace the placeholders with values in the given text.
+    /// Not as efficient as <see cref="InjectPlaceholderValues"/>.
+    /// Kept for benchmarking purposes.
     /// </summary>
     /// <param name="textWithPlaceholders">The text with placeholders. Cannot be null.</param>
     /// <param name="valueComponents">The components to be replaced. Cannot be null.</param>
@@ -55,7 +158,7 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     /// The text with replaced placeholders.
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="textWithPlaceholders"/> or <paramref name="valueComponents"/> is null.</exception>
-    public static string InjectPlaceholderValues(string textWithPlaceholders, Dictionary<string, string> valueComponents)
+    public static string InjectPlaceholderValuesSimple(string textWithPlaceholders, Dictionary<string, string> valueComponents)
     {
         ArgumentNullException.ThrowIfNull(textWithPlaceholders);
         ArgumentNullException.ThrowIfNull(valueComponents);
@@ -130,7 +233,7 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     /// <exception cref="InvalidOperationException">Thrown when the template tree exceeds the maximum recursion depth and indicating a likely circular reference.</exception>
     public string Render()
     {
-        string processed = RenderRecursively(this, EmptyPrimitives, 0);
+        string processed = RenderRecursively(this, 0);
         processed = ReplaceEscapedPlaceholdersIfNeeded(processed);
 
         return processed;
@@ -148,7 +251,8 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     {
         ArgumentNullException.ThrowIfNull(primitives);
 
-        string processed = RenderRecursively(this, primitives, 0);
+        string processed = RenderRecursively(this, 0);
+        processed = InjectPlaceholderValues(processed, new Dictionary<string, string>(primitives));
         processed = ReplaceEscapedPlaceholdersIfNeeded(processed);
 
         return processed;
@@ -190,25 +294,25 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     }
 
     /// <summary>
-    /// Recursively renders the template and all its child templates.
+    /// Recursively renders the template and all its child templates and replacing only structural placeholders.
+    /// Primitives are not applied here; they are injected once after the full tree is resolved.
     /// </summary>
     /// <param name="templateToProcess">The template to process in the current recursion step.</param>
-    /// <param name="primitives">A dictionary of primitive string values to inject at render time.</param>
     /// <param name="depth">The current depth of recursion to prevent infinite loops.</param>
     /// <returns>The fully rendered string for the current template context.</returns>
     /// <exception cref="InvalidOperationException">Thrown when recursion depth exceeds <see cref="MaxRecursionDepth"/>.</exception>
-    private static string RenderRecursively(Template templateToProcess, IDictionary<string, string> primitives, int depth)
+    private static string RenderRecursively(Template templateToProcess, int depth)
     {
         if (depth > MaxRecursionDepth)
         {
             throw new InvalidOperationException($"Template recursion exceeded maximum depth of {MaxRecursionDepth}. This may indicate a circular reference in the template tree.");
         }
 
-        Dictionary<string, string> finalTemplateValuesForPlaceholders = new(primitives);
+        Dictionary<string, string> finalTemplateValuesForPlaceholders = [];
 
         foreach (KeyValuePair<string, Template> childTemplatePair in templateToProcess.ChildTemplates)
         {
-            string processedComponentText = RenderRecursively(childTemplatePair.Value, primitives, depth + 1);
+            string processedComponentText = RenderRecursively(childTemplatePair.Value, depth + 1);
             finalTemplateValuesForPlaceholders[childTemplatePair.Key] = processedComponentText;
         }
 
