@@ -182,8 +182,8 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     /// </summary>
     /// <example>
     /// <code language="csharp">
-    /// // Input:  "Ø{{NameØ}}"  →  Output: "{{Name}}"
-    /// string result = Template.ReplaceEscapedPlaceholders("Ø{{NameØ}}");
+    /// // Input:  "Ø{{Name}}Ø"  →  Output: "{{Name}}"
+    /// string result = Template.ReplaceEscapedPlaceholders("Ø{{Name}}Ø");
     /// </code>
     /// </example>
     /// <param name="textToBeProcessed">The text that needs processing. Cannot be <see langword="null"/>.</param>

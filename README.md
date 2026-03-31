@@ -91,13 +91,13 @@ Structural child templates take precedence over primitives when the same placeho
 
 ## Escaped placeholders
 
-If you need literal `{{` or `}}` in the rendered output, prefix the delimiter with the escape character `Ø`:
+If you need literal `{{` or `}}` in the rendered output, wrap the delimiters with the escape character `Ø`:
 
 ```csharp
-// Use Ø{{ and Ø}} to output literal delimiters
-Template template = new("Use Ø{{Name Ø}} as a placeholder.");
+// Use Ø{{ and }}Ø to output literal delimiters
+Template template = new("Use Ø{{Name}}Ø as a placeholder.");
 string result = template.Render();
-// result: "Use {{Name }} as a placeholder."
+// result: "Use {{Name}} as a placeholder."
 ```
 
 See `TemplateDelimiters` for the full set of escape constants.

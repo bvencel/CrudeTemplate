@@ -7,10 +7,10 @@
 /// For example, <c>{{Name}}</c> is a placeholder that can be replaced with a value.
 /// </para>
 /// <para>
-/// <b>Escaping:</b> If the delimiter characters themselves need to appear in the output, they must be escaped using <see cref="EscapeCharacter"/> (<c>Ø</c>):
+/// <b>Escaping:</b> If the delimiter characters themselves need to appear in the output, wrap them with <see cref="EscapeCharacter"/> (<c>Ø</c>):
 /// <list type="bullet">
-/// <item><description>Use <see cref="EscapedStart"/> to output a literal <see cref="PlaceholderStart"/></description></item>
-/// <item><description>Use <see cref="EscapedEnd"/> to output a literal <see cref="PlaceholderEnd"/></description></item>
+/// <item><description>Use <see cref="EscapedStart"/> (<c>Ø{{</c>) to output a literal <see cref="PlaceholderStart"/></description></item>
+/// <item><description>Use <see cref="EscapedEnd"/> (<c>}}Ø</c>) to output a literal <see cref="PlaceholderEnd"/></description></item>
 /// </list>
 /// </para>
 /// <para>
@@ -21,7 +21,7 @@ public static class TemplateDelimiters
 {
     /// <summary>
     /// The escape character used to escape placeholder delimiters. Set to <c>Ø</c> (Scandinavian letter O-with-stroke).
-    /// Combine with <see cref="PlaceholderStart"/> or <see cref="PlaceholderEnd"/> to output literal delimiters.
+    /// Prefix <see cref="PlaceholderStart"/> or suffix <see cref="PlaceholderEnd"/> with this character to output literal delimiters.
     /// </summary>
     public const string EscapeCharacter = "Ø";
 
@@ -38,7 +38,7 @@ public static class TemplateDelimiters
     /// <summary>
     /// The escape sequence for <see cref="PlaceholderEnd"/>. Renders as a literal <c>}}</c> in the final output.
     /// </summary>
-    public const string EscapedEnd = EscapeCharacter + PlaceholderEnd;
+    public const string EscapedEnd = PlaceholderEnd + EscapeCharacter;
 
     /// <summary>
     /// The escape sequence for <see cref="PlaceholderStart"/>. Renders as a literal <c>{{</c> in the final output.
