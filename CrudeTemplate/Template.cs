@@ -1,49 +1,23 @@
-﻿using CrudeTemplate.Helpers;
+﻿using CrudeTemplate.Constants;
+using CrudeTemplate.Extensions;
 
 namespace CrudeTemplate;
 
 /// <summary>
-/// Represents a recursive, composable string template that supports named placeholders and child templates.
+/// Represents a recursive and composable string template that supports named placeholders and child templates and render-time primitives.
 /// <para>
-/// <b>Placeholders</b> are named tokens in the template text, delimited by <c>{{</c> and <c>}}</c> (e.g., <c>{{Name}}</c>). Each placeholder can be associated with a <b>child template</b>, which is itself a <see cref="Template"/> instance. When rendering, placeholders are recursively replaced by the rendered output of their corresponding child templates.
+/// Placeholders are named tokens in the template text and delimited by <c>{{</c> and <c>}}</c> (e.g. <c>{{Name}}</c>).
+/// Placeholders can be replaced by structural child templates (assembled once) or primitives (injected at render time).
 /// </para>
 /// <para>
-/// This design enables the construction of complex, tree-structured templates where each node (template) can have its own text and a set of named child templates. The rendering process is deterministic and context-free: rendering a template always produces the same result given the same tree structure.
+/// Mutability and cloning: The <see cref="Template"/> class is mutable. You can modify the <see cref="Text"/> property and the <see cref="ChildTemplates"/> dictionary.
+/// It implements <see cref="ICloneable"/> to provide a deep copy of the template tree and allowing you to branch structural variations safely.
 /// </para>
 /// <para>
-/// <b>Escaping:</b> To output literal placeholder delimiters, see the escaping documentation in <see cref="TemplateDelimiters"/>.
-/// </para>
-/// <para>
-/// <b>Example:</b>
-/// <code language="csharp">
-/// var name = new Template("John");
-/// var body = new Template("Your order {{OrderId}} has shipped.")
-///     .With("OrderId", new Template("#1234"));
-/// var footer = new Template("Kind regards,\nThe Company");
-/// var email = new Template("Dear {{Name}},\n\n{{Body}}\n\n{{Footer}}")
-///     .With("Name", name)
-///     .With("Body", body)
-///     .With("Footer", footer);
-/// string result = email.Render();
-/// </code>
-/// The above will render to:
-/// <code>
-/// Dear John,
-///
-/// Your order #1234 has shipped.
-///
-/// Kind regards,
-/// The Company
-/// </code>
-/// </para>
-/// <para>
-/// <b>Mutability:</b> The <see cref="Template"/> class is mutable. You can modify the <see cref="Text"/> property and the <see cref="ChildTemplates"/> dictionary after creation. The <see cref="With"/> method is provided for convenience and returns this instance with the specified child template added or replaced, but you may also manipulate the instance directly.
-/// </para>
-/// <para>
-/// <b>Placeholder validation:</b> Placeholders must not be null, empty, or whitespace. An <see cref="ArgumentException"/> is thrown if a placeholder is null, empty, or consists only of whitespace. Null <c>childText</c> values are allowed and treated as empty strings.
+/// Placeholder validation: Placeholders must not be null or empty or whitespace. An <see cref="ArgumentException"/> is thrown if a placeholder is null or empty or consists only of whitespace.
 /// </para>
 /// </summary>
-public class Template(string text, Dictionary<string, Template>? childTemplates = null)
+public class Template(string text, Dictionary<string, Template>? childTemplates = null) : ICloneable
 {
     /// <summary>
     /// The maximum recursion depth allowed when rendering templates.
@@ -52,8 +26,8 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     private const int MaxRecursionDepth = 100;
 
     /// <summary>
-    /// Gets or sets the dictionary of child templates (placeholders). Never null.
-    /// Each key corresponds to a placeholder name in the template text, and the value is the <see cref="Template"/> to substitute for that placeholder.
+    /// Gets or sets the dictionary of child templates (structural placeholders). Never null.
+    /// Each key corresponds to a placeholder name in the template text and the value is the <see cref="Template"/> to substitute.
     /// </summary>
     public Dictionary<string, Template> ChildTemplates
     {
@@ -62,77 +36,163 @@ public class Template(string text, Dictionary<string, Template>? childTemplates 
     } = childTemplates ?? [];
 
     /// <summary>
-    /// Gets or sets the template text. May contain placeholders (e.g., <c>{{Name}}</c>).
+    /// Gets or sets the template text. May contain placeholders (e.g. <c>{{Name}}</c>).
     /// </summary>
     public string Text { get; set; } = text ?? throw new ArgumentNullException(nameof(text));
 
     /// <summary>
-    /// Renders this template and all its child templates recursively, replacing all placeholders.
+    /// Replace the placeholders with values in the given text.
     /// </summary>
-    /// <returns>The fully rendered template string.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when the template tree exceeds the maximum recursion depth of <see cref="MaxRecursionDepth"/>, indicating a likely circular reference.</exception>
-    public string Render()
+    /// <param name="textWithPlaceholders">The text with placeholders. Cannot be null.</param>
+    /// <param name="valueComponents">The components to be replaced. Cannot be null.</param>
+    /// <returns>
+    /// The text with replaced placeholders.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="textWithPlaceholders"/> or <paramref name="valueComponents"/> is null.</exception>
+    public static string InjectPlaceholderValues(string textWithPlaceholders, Dictionary<string, string> valueComponents)
     {
-        string processed = RenderRecursively(this);
-        processed = TemplateHelper.ReplaceEscapedPlaceholdersIfNeeded(processed);
+        ArgumentNullException.ThrowIfNull(textWithPlaceholders);
+        ArgumentNullException.ThrowIfNull(valueComponents);
+
+        if (valueComponents.Count == 0)
+        {
+            return textWithPlaceholders;
+        }
+
+        foreach (KeyValuePair<string, string> component in valueComponents)
+        {
+            textWithPlaceholders = textWithPlaceholders.Replace(
+                component.Key.AsPlaceholder(),
+                component.Value);
+        }
+
+        return textWithPlaceholders;
+    }
+
+    /// <summary>
+    /// Converts escaped placeholders to literal delimiter characters.
+    /// See <see cref="TemplateDelimiters"/> for escape sequence details.
+    /// </summary>
+    /// <param name="textToBeProcessed">The text that needs processing. Cannot be null.</param>
+    /// <returns>A processed text where escaped delimiters are converted to literal delimiters.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="textToBeProcessed"/> is null.</exception>
+    public static string ReplaceEscapedPlaceholdersIfNeeded(string textToBeProcessed)
+    {
+        ArgumentNullException.ThrowIfNull(textToBeProcessed);
+
+        textToBeProcessed = textToBeProcessed.Replace(TemplateDelimiters.EscapedStart, TemplateDelimiters.PlaceholderStart);
+        textToBeProcessed = textToBeProcessed.Replace(TemplateDelimiters.EscapedEnd, TemplateDelimiters.PlaceholderEnd);
+
+        return textToBeProcessed;
+    }
+
+    /// <summary>
+    /// Creates a deep copy of this template and recursively cloning all child templates.
+    /// </summary>
+    /// <returns>A new and deeply cloned <see cref="Template"/> instance.</returns>
+    public object Clone()
+    {
+        Template clonedTemplate = CloneTemplate();
+
+        return clonedTemplate;
+    }
+
+    /// <summary>
+    /// Creates a deep copy of this template and recursively cloning all child templates.
+    /// Strongly typed for convenience.
+    /// </summary>
+    /// <returns>A new and deeply cloned <see cref="Template"/> instance.</returns>
+    public Template CloneTemplate()
+    {
+        Dictionary<string, Template> clonedChildren = [];
+
+        foreach (KeyValuePair<string, Template> childTemplatePair in ChildTemplates)
+        {
+            clonedChildren.Add(childTemplatePair.Key, childTemplatePair.Value.CloneTemplate());
+        }
+
+        Template newTemplate = new(Text, clonedChildren);
+
+        return newTemplate;
+    }
+
+    /// <summary>
+    /// Renders this template and all its child templates recursively and replacing all placeholders with structure and runtime data.
+    /// This method is purely functional and does not mutate the template instance.
+    /// </summary>
+    /// <param name="primitives">A dictionary of primitive string values to inject at render time (e.g. exact timestamps and names). Optional.</param>
+    /// <returns>The fully rendered template string.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the template tree exceeds the maximum recursion depth and indicating a likely circular reference.</exception>
+    public string Render(IDictionary<string, string>? primitives = null)
+    {
+        primitives ??= new Dictionary<string, string>();
+
+        string processed = RenderRecursively(this, primitives, 0);
+        processed = ReplaceEscapedPlaceholdersIfNeeded(processed);
 
         return processed;
     }
 
     /// <summary>
-    /// Adds or replaces a child template for the given placeholder key. Placeholders must not be null, empty, or whitespace.
+    /// Adds or replaces a child template for the given placeholder key.
     /// </summary>
-    /// <param name="placeholder">The name of the placeholder to associate with the child template. Must not be null, empty, or whitespace.</param>
-    /// <param name="childTemplate">The <see cref="Template"/> to insert or replace for the specified placeholder. May be null (treated as an empty template).</param>
-    /// <returns>This <see cref="Template"/> instance with the specified child template added or replaced.</returns>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="placeholder"/> is null, empty, or whitespace.</exception>
+    /// <param name="placeholder">The name of the placeholder to associate with the child template. Must not be null or empty or whitespace.</param>
+    /// <param name="childTemplate">The <see cref="Template"/> to insert or replace. May be null (treated as an empty template).</param>
+    /// <returns>This <see cref="Template"/> instance.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="placeholder"/> is null or empty or whitespace.</exception>
     public Template With(string placeholder, Template? childTemplate)
     {
         if (string.IsNullOrWhiteSpace(placeholder))
         {
-            throw new ArgumentException("Placeholder must not be null, empty, or whitespace.", nameof(placeholder));
+            throw new ArgumentException("Placeholder must not be null or empty or whitespace.", nameof(placeholder));
         }
 
-        ChildTemplates[placeholder] = childTemplate ?? new Template(string.Empty);
+        Template finalChildTemplate = childTemplate is null ? new Template(string.Empty) : childTemplate;
+        ChildTemplates[placeholder] = finalChildTemplate;
 
         return this;
     }
 
     /// <summary>
-    /// Adds or replaces a child template for the given placeholder key, using a string as the child template's text. Placeholders must not be null, empty, or whitespace. Null <paramref name="childText"/> is treated as an empty string.
+    /// Adds or replaces a child template for the given placeholder key and using a string as the child template text.
     /// </summary>
-    /// <param name="placeholder">The name of the placeholder to associate with the child template. Must not be null, empty, or whitespace.</param>
+    /// <param name="placeholder">The name of the placeholder to associate with the child template. Must not be null or empty or whitespace.</param>
     /// <param name="childText">The text for the new child template. May be null (treated as empty string).</param>
-    /// <returns>This <see cref="Template"/> instance with the specified child template added or replaced.</returns>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="placeholder"/> is null, empty, or whitespace.</exception>
+    /// <returns>This <see cref="Template"/> instance.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="placeholder"/> is null or empty or whitespace.</exception>
     public Template WithText(string placeholder, string? childText)
     {
-        return With(placeholder, new Template(childText ?? string.Empty));
+        string finalText = childText is null ? string.Empty : childText;
+        Template newChildTemplate = new(finalText);
+
+        return With(placeholder, newChildTemplate);
     }
 
     /// <summary>
-    /// Recursively renders the template and all its child templates, replacing placeholders with their rendered values.
+    /// Recursively renders the template and all its child templates.
     /// </summary>
-    /// <param name="templateToProcess">The template to render.</param>
-    /// <param name="depth">The current recursion depth, used to detect circular references.</param>
-    /// <returns>The fully rendered template string, with all placeholders replaced by their corresponding child template output.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when recursion depth exceeds <see cref="MaxRecursionDepth"/>, indicating a likely circular reference.</exception>
-    private static string RenderRecursively(Template templateToProcess, int depth = 0)
+    /// <param name="templateToProcess">The template to process in the current recursion step.</param>
+    /// <param name="primitives">A dictionary of primitive string values to inject at render time.</param>
+    /// <param name="depth">The current depth of recursion to prevent infinite loops.</param>
+    /// <returns>The fully rendered string for the current template context.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when recursion depth exceeds <see cref="MaxRecursionDepth"/>.</exception>
+    private static string RenderRecursively(Template templateToProcess, IDictionary<string, string> primitives, int depth)
     {
         if (depth > MaxRecursionDepth)
         {
-            throw new InvalidOperationException(
-                $"Template recursion exceeded maximum depth of {MaxRecursionDepth}. This may indicate a circular reference in the template tree.");
+            throw new InvalidOperationException($"Template recursion exceeded maximum depth of {MaxRecursionDepth}. This may indicate a circular reference in the template tree.");
         }
 
-        Dictionary<string, string> finalTemplateValuesForPlaceholders = [];
+        Dictionary<string, string> finalTemplateValuesForPlaceholders = new(primitives);
 
-        foreach (KeyValuePair<string, Template> component in templateToProcess.ChildTemplates)
+        foreach (KeyValuePair<string, Template> childTemplatePair in templateToProcess.ChildTemplates)
         {
-            string processedComponentText = RenderRecursively(component.Value, depth + 1);
-            finalTemplateValuesForPlaceholders.Add(component.Key, processedComponentText);
+            string processedComponentText = RenderRecursively(childTemplatePair.Value, primitives, depth + 1);
+            finalTemplateValuesForPlaceholders[childTemplatePair.Key] = processedComponentText;
         }
 
-        return TemplateHelper.InjectPlaceholderValues(templateToProcess.Text, finalTemplateValuesForPlaceholders);
+        string injectedText = InjectPlaceholderValues(templateToProcess.Text, finalTemplateValuesForPlaceholders);
+
+        return injectedText;
     }
 }

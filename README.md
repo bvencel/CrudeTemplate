@@ -6,6 +6,13 @@ CrudeTemplate is a minimal, recursive string templating engine for .NET, designe
 - Composable (templates can embed other templates)
 - Reusable (templates and rendered results can be cached and reused)
 
+## Core philosophies
+
+- Composition over parsing: Build complex documents by snapping together small, cacheable template blocks (Header, Body, Footer) rather than writing monolithic strings
+- Zero magic: No reflection, no background delegates, no runtime compilation, and no embedded scripting languages. What you construct in C# is exactly what renders
+- Structural determinism: Logic (like if/else forks or loops) belongs in your C# code to determine which templates to snap together, not inside the template text itself
+- Two-phase rendering: Define your immutable template tree once, then render it thousands of times by passing in lightweight, render-time primitive dictionaries (perfect for mass emails or exact timestamps)
+
 ## Example
 
 ```C#
