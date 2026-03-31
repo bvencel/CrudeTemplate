@@ -86,6 +86,23 @@ public class TemplateTests
     }
 
     /// <summary>
+    /// Verifies that a circular template reference throws <see cref="InvalidOperationException"/>
+    /// instead of causing a stack overflow.
+    /// </summary>
+    [Fact]
+    public void Render_CircularReference_ThrowsInvalidOperationException()
+    {
+        // Arrange: A references B, B references A
+        Template templateA = new("{{B}}");
+        Template templateB = new("{{A}}");
+        templateA.With("B", templateB);
+        templateB.With("A", templateA);
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => templateA.Render());
+    }
+
+    /// <summary>
     /// Verifies deeply nested templates render correctly through multiple recursion levels.
     /// </summary>
     [Fact]

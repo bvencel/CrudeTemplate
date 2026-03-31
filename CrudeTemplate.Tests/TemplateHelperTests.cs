@@ -49,7 +49,7 @@ public class TemplateHelperTests
     }
 
     [Theory]
-    [MemberData(nameof(ReplacementCases))]
+    [MemberData(nameof(ReplacementCases), DisableDiscoveryEnumeration = true)]
     public void InjectPlaceholderValues_WithComponents_ProducesExpectedResult(
         string text, Dictionary<string, string> components, string expected)
     {

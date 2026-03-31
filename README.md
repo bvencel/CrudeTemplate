@@ -1,7 +1,7 @@
 ﻿# CrudeTemplate
 
 CrudeTemplate is a minimal, recursive string templating engine for .NET, designed to be:
-- Avoid side effects if possible
+- Side-effect-free where possible
 - Deterministic (rendering is context-free and parameterless)
 - Composable (templates can embed other templates)
 - Reusable (templates and rendered results can be cached and reused)

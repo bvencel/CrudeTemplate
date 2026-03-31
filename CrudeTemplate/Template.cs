@@ -43,30 +43,13 @@ namespace CrudeTemplate;
 /// <b>Placeholder validation:</b> Placeholders must not be null, empty, or whitespace. An <see cref="ArgumentException"/> is thrown if a placeholder is null, empty, or consists only of whitespace. Null <c>childText</c> values are allowed and treated as empty strings.
 /// </para>
 /// </summary>
-public class Template
+public class Template(string text, Dictionary<string, Template>? childTemplates = null)
 {
-    private Dictionary<string, Template> childTemplates = [];
-
     /// <summary>
-    /// Initializes a new instance of the <see cref="Template"/> class with the specified text and optional child templates.
+    /// The maximum recursion depth allowed when rendering templates.
+    /// Exceeding this limit indicates a likely circular reference in the template tree.
     /// </summary>
-    /// <param name="text">The template text. Cannot be null. May contain placeholders (e.g., <c>{{Name}}</c>).</param>
-    /// <param name="childTemplates">The child templates for placeholders. If null, an empty dictionary is used. Each key should match a placeholder name in <paramref name="text"/>.</param>
-    public Template(string text, Dictionary<string, Template>? childTemplates)
-    {
-        ArgumentNullException.ThrowIfNull(text);
-        Text = text;
-        ChildTemplates = childTemplates ?? [];
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Template"/> class with the specified text and no child templates.
-    /// </summary>
-    /// <param name="text">The template text. Cannot be null.</param>
-    public Template(string text)
-        : this(text, null)
-    {
-    }
+    private const int MaxRecursionDepth = 100;
 
     /// <summary>
     /// Gets or sets the dictionary of child templates (placeholders). Never null.
@@ -74,19 +57,20 @@ public class Template
     /// </summary>
     public Dictionary<string, Template> ChildTemplates
     {
-        get => childTemplates;
-        set => childTemplates = value ?? [];
-    }
+        get => field;
+        set => field = value ?? [];
+    } = childTemplates ?? [];
 
     /// <summary>
     /// Gets or sets the template text. May contain placeholders (e.g., <c>{{Name}}</c>).
     /// </summary>
-    public string Text { get; set; }
+    public string Text { get; set; } = text ?? throw new ArgumentNullException(nameof(text));
 
     /// <summary>
     /// Renders this template and all its child templates recursively, replacing all placeholders.
     /// </summary>
     /// <returns>The fully rendered template string.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the template tree exceeds the maximum recursion depth of <see cref="MaxRecursionDepth"/>, indicating a likely circular reference.</exception>
     public string Render()
     {
         string processed = RenderRecursively(this);
@@ -129,16 +113,23 @@ public class Template
     /// <summary>
     /// Recursively renders the template and all its child templates, replacing placeholders with their rendered values.
     /// </summary>
-    /// <param name="templateToProcess">The template to render. Cannot be null.</param>
+    /// <param name="templateToProcess">The template to render.</param>
+    /// <param name="depth">The current recursion depth, used to detect circular references.</param>
     /// <returns>The fully rendered template string, with all placeholders replaced by their corresponding child template output.</returns>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="templateToProcess"/> is null.</exception>
-    private static string RenderRecursively(Template templateToProcess)
+    /// <exception cref="InvalidOperationException">Thrown when recursion depth exceeds <see cref="MaxRecursionDepth"/>, indicating a likely circular reference.</exception>
+    private static string RenderRecursively(Template templateToProcess, int depth = 0)
     {
+        if (depth > MaxRecursionDepth)
+        {
+            throw new InvalidOperationException(
+                $"Template recursion exceeded maximum depth of {MaxRecursionDepth}. This may indicate a circular reference in the template tree.");
+        }
+
         Dictionary<string, string> finalTemplateValuesForPlaceholders = [];
 
         foreach (KeyValuePair<string, Template> component in templateToProcess.ChildTemplates)
         {
-            string processedComponentText = RenderRecursively(component.Value);
+            string processedComponentText = RenderRecursively(component.Value, depth + 1);
             finalTemplateValuesForPlaceholders.Add(component.Key, processedComponentText);
         }
 
