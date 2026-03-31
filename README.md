@@ -1,4 +1,5 @@
-﻿# CrudeTemplate
+﻿# CrudeTemplate 
+![Tests](https://github.com/bvencel/CrudeTemplate/actions/workflows/dotnet.yml/badge.svg)
 
 CrudeTemplate is a minimal, recursive string templating engine for .NET, designed to be:
 - Side-effect-free where possible
@@ -181,3 +182,4 @@ The core logic recursively processes template trees, replacing placeholders with
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on code style, testing and documentation.
+
